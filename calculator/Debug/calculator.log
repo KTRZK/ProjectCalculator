@@ -1,0 +1,3 @@
+﻿  main.c
+C:\Users\karol\source\repos\calculator\main.c(189,18): warning C4101: "num": lokalna zmienna, do której nie istnieje odwołanie
+  calculator.vcxproj -> C:\Users\karol\source\repos\calculator\Debug\calculator.exe
