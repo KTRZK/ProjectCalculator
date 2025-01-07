@@ -14,7 +14,7 @@ char* decimal_to_base(const char* num, int base);
 char* integer_division_strings(const char* num1, const char* num2, int base);
 char* modulo_strings(const char* num1, const char* num2, int base);
 
-// Bezpieczne zwalnianie pamiêci, aby unikn¹æ wskaŸników wisz¹cych
+// Bezpieczne zwalnianie pamici, aby unikn wska nik w wisz cych
 void safe_free(void* ptr)
 {
     if (ptr != NULL)
@@ -24,7 +24,7 @@ void safe_free(void* ptr)
     }
 }
 
-// Konwertuje liczbê z jednego systemu liczbowego do innego
+// Konwertuje liczb  z jednego systemu liczbowego do innego
 char* perform_base_conversion(const char* num, int from_base, int to_base)
 {
     char* decimal = base_to_decimal(num, from_base);
@@ -37,14 +37,14 @@ char* perform_base_conversion(const char* num, int from_base, int to_base)
     return result;
 }
 
-// Sprawdza, czy linia zawiera poprawne ¿¹danie konwersji miêdzy bazami
+// Sprawdza, czy linia zawiera poprawne   danie konwersji mi dzy bazami
 int is_base_conversion_request(const char* line, int* base1, int* base2)
 {
     char extra;
     return (sscanf(line, "%d %d %c", base1, base2, &extra) == 2);
 }
 
-// Sprawdza, czy linia zawiera poprawne ¿¹danie operacji arytmetycznej
+// Sprawdza, czy linia zawiera poprawne   danie operacji arytmetycznej
 int is_arithmetic_operation_request(const char* line, char* operation, int* base)
 {
     char extra;
@@ -89,10 +89,46 @@ int is_valid_number_for_base(const char* number, int base)
     return 1;
 }
 
-// G³ówna funkcja do parsowania danych wejœciowych i wykonywania operacji
+
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+
+// Funkcja do dynamicznego odczytu linii o dowolnej d³ugoœci
+char* read_line(FILE* file) {
+    size_t size = 1024; // Pocz¹tkowy rozmiar
+    size_t len = 0;
+    char* buffer = malloc(size);
+    if (!buffer) {
+        perror("malloc failed");
+        exit(EXIT_FAILURE);
+    }
+
+    int c;
+    while ((c = fgetc(file)) != EOF && c != '\n') {
+        if (len + 1 >= size) {
+            size *= 2; // Zwiêkszamy rozmiar
+            char* temp = realloc(buffer, size);
+            if (!temp) {
+                free(buffer);
+                perror("realloc failed");
+                exit(EXIT_FAILURE);
+            }
+            buffer = temp;
+        }
+        buffer[len++] = (char)c;
+    }
+    buffer[len] = '\0';
+
+    if (len == 0 && c == EOF) {
+        free(buffer);
+        return NULL; // Koniec pliku
+    }
+    return buffer;
+}
+
 void parse_and_execute(FILE* input, FILE* output)
 {
-    char line[1024];
     int empty_line_count = 0;
     int base1 = 0, base2 = 0;
     int is_base_conversion_mode = 0;
@@ -102,10 +138,12 @@ void parse_and_execute(FILE* input, FILE* output)
     int start_of_file = 1;
     int operation_started = 0;
 
-    while (fgets(line, sizeof(line), input)) {
+    char* line = NULL; // WskaŸnik do dynamicznie alokowanej linii
+
+    while ((line = read_line(input)) != NULL) {
         line[strcspn(line, "\n")] = 0;  // Usuwanie pustych linii
 
-        // Liczenie pustych lini
+        // Liczenie pustych linii
         if (strlen(line) == 0)
         {
             empty_line_count++;
@@ -122,13 +160,15 @@ void parse_and_execute(FILE* input, FILE* output)
                     error_flag = 0;  // Reset flagi error
                 }
                 operation_started = 0;
+                free(line); // Zwolnienie pamiêci po zakoñczeniu przetwarzania linii
                 continue;
             }
+            free(line); // Zwolnienie pamiêci po zakoñczeniu przetwarzania linii
             continue;
         }
         else
         {
-            // Reset licznika lini
+            // Reset licznika linii
             empty_line_count = 0;
         }
 
@@ -137,6 +177,7 @@ void parse_and_execute(FILE* input, FILE* output)
             if (!is_valid_number_for_base(line, base1))
             {
                 error_flag = 1;
+                free(line); // Zwolnienie pamiêci po zakoñczeniu przetwarzania linii
                 continue;
             }
 
@@ -152,9 +193,11 @@ void parse_and_execute(FILE* input, FILE* output)
                 error_flag = 1;
             }
             empty_line_count = 0;
+            free(line); // Zwolnienie pamiêci po zakoñczeniu przetwarzania linii
             continue;
         }
-        // W³acznie flagi is_base_conversion_mode jeœli wystêpujê konwersja
+
+        // W acznie flagi is_base_conversion_mode je li wyst puj konwersja
         if ((is_base_conversion_request(line, &base1, &base2) || (start_of_file && is_base_conversion_mode)))
         {
             start_of_file = 0;
@@ -165,12 +208,13 @@ void parse_and_execute(FILE* input, FILE* output)
             if (!is_valid_base(base1) || !is_valid_base(base2))
             {
                 error_flag = 1;
+                free(line); // Zwolnienie pamiêci po zakoñczeniu przetwarzania linii
                 continue;
             }
+            free(line); // Zwolnienie pamiêci po zakoñczeniu przetwarzania linii
             continue;
-
-
         }
+
         // Dokonywanie operacji arytmetycznych
         else if (is_arithmetic_operation_request(line, &operation, &base) || (start_of_file && operation))
         {
@@ -183,21 +227,21 @@ void parse_and_execute(FILE* input, FILE* output)
             if (!is_valid_base(base))
             {
                 error_flag = 1;
+                free(line); // Zwolnienie pamiêci po zakoñczeniu przetwarzania linii
                 continue;
             }
 
-            char num[1024];
             char* result = NULL;
             int contains_valid_number = 0;
 
             fprintf(output, "%c %d\n\n", operation, base);
 
             // Wczytywanie zmiennych do operacji arytmetycznych
-            while (fgets(line, sizeof(line), input))
+            while ((line = read_line(input)) != NULL)
             {
                 line[strcspn(line, "\n")] = 0;
 
-                // jesli linia jest pusta, powiêkszanie wartoœci empty_line_count
+                // Jeœli linia jest pusta, powiêkszanie wartoœci empty_line_count
                 if (strlen(line) == 0)
                 {
                     empty_line_count++;
@@ -206,6 +250,7 @@ void parse_and_execute(FILE* input, FILE* output)
                         empty_line_count = 0;
                         break;  // Koniec obecnej operacji
                     }
+                    free(line); // Zwolnienie pamiêci po zakoñczeniu przetwarzania linii
                     continue;
                 }
 
@@ -216,6 +261,7 @@ void parse_and_execute(FILE* input, FILE* output)
                 if (!is_valid_number_for_base(line, base))
                 {
                     error_flag = 1;
+                    free(line); // Zwolnienie pamiêci po zakoñczeniu przetwarzania linii
                     break;
                 }
 
@@ -256,6 +302,8 @@ void parse_and_execute(FILE* input, FILE* output)
                     safe_free(result);
                     result = temp_result;
                 }
+
+                free(line); // Zwolnienie pamiêci po zakoñczeniu przetwarzania linii
             }
 
             if (contains_valid_number && result && !error_flag)
@@ -273,24 +321,224 @@ void parse_and_execute(FILE* input, FILE* output)
             error_flag = 1;
         }
 
-
         if (error_flag)
         {
             fprintf(output, "ERROR\n\n");
             error_flag = 0;
         }
 
+        free(line); // Zwolnienie pamiêci po zakoñczeniu przetwarzania linii
     }
+
     if (error_flag)
     {
         fprintf(output, "ERROR\n\n");
         error_flag = 0;
     }
-
 }
 
+// G  wna funkcja do parsowania danych wej ciowych i wykonywania operacji
+//void parse_and_execute(FILE* input, FILE* output)
+//{
+//    char line[1024];
+//    int empty_line_count = 0;
+//    int base1 = 0, base2 = 0;
+//    int is_base_conversion_mode = 0;
+//    int error_flag = 0;
+//    char operation = '\0';
+//    int base = 10;
+//    int start_of_file = 1;
+//    int operation_started = 0;
+//
+//    while (fgets(line, sizeof(line), input)) {
+//        line[strcspn(line, "\n")] = 0;  // Usuwanie pustych linii
+//
+//        // Liczenie pustych lini
+//        if (strlen(line) == 0)
+//        {
+//            empty_line_count++;
+//            if (empty_line_count == 3)
+//            {
+//                // Reset flagi konwersji
+//                is_base_conversion_mode = 0;
+//                operation = '\0';
+//                start_of_file = 1;
+//                empty_line_count = 0;
+//                if (error_flag)
+//                {
+//                    fprintf(output, "ERROR\n\n");
+//                    error_flag = 0;  // Reset flagi error
+//                }
+//                operation_started = 0;
+//                continue;
+//            }
+//            continue;
+//        }
+//        else
+//        {
+//            // Reset licznika lini
+//            empty_line_count = 0;
+//        }
+//
+//        if (is_base_conversion_mode == 1) {
+//            line[strcspn(line, "\n")] = 0;
+//            if (!is_valid_number_for_base(line, base1))
+//            {
+//                error_flag = 1;
+//                continue;
+//            }
+//
+//            // Dokonywanie konwersji
+//            char* result = perform_base_conversion(line, base1, base2);
+//            if (result)
+//            {
+//                fprintf(output, "%s\n\n%s\n\n", line, result);
+//                safe_free(result);
+//            }
+//            else
+//            {
+//                error_flag = 1;
+//            }
+//            empty_line_count = 0;
+//            continue;
+//        }
+//        // W acznie flagi is_base_conversion_mode je li wyst puj  konwersja
+//        if ((is_base_conversion_request(line, &base1, &base2) || (start_of_file && is_base_conversion_mode)))
+//        {
+//            start_of_file = 0;
+//            is_base_conversion_mode = 1;
+//            operation_started = 1;
+//            fprintf(output, "%d %d\n\n", base1, base2);
+//            // Sprawdzanie poprawno ci zmiennych
+//            if (!is_valid_base(base1) || !is_valid_base(base2))
+//            {
+//                error_flag = 1;
+//                continue;
+//            }
+//            continue;
+//
+//
+//        }
+//        // Dokonywanie operacji arytmetycznych
+//        else if (is_arithmetic_operation_request(line, &operation, &base) || (start_of_file && operation))
+//        {
+//            start_of_file = 0;
+//
+//            is_base_conversion_mode = 0;
+//            operation_started = 1;
+//
+//            // Sprawdzanie poprawno ci zmiennych
+//            if (!is_valid_base(base))
+//            {
+//                error_flag = 1;
+//                continue;
+//            }
+//
+//            char num[1024];
+//            char* result = NULL;
+//            int contains_valid_number = 0;
+//
+//            fprintf(output, "%c %d\n\n", operation, base);
+//
+//            // Wczytywanie zmiennych do operacji arytmetycznych
+//            while (fgets(line, sizeof(line), input))
+//            {
+//                line[strcspn(line, "\n")] = 0;
+//
+//                // jesli linia jest pusta, powi kszanie warto ci empty_line_count
+//                if (strlen(line) == 0)
+//                {
+//                    empty_line_count++;
+//                    if (empty_line_count == 3)
+//                    {
+//                        empty_line_count = 0;
+//                        break;  // Koniec obecnej operacji
+//                    }
+//                    continue;
+//                }
+//
+//                // Reset empty_line_count na niepustej linii
+//                empty_line_count = 0;
+//
+//                // Sprawdzanie poprawno ci zmiennych
+//                if (!is_valid_number_for_base(line, base))
+//                {
+//                    error_flag = 1;
+//                    break;
+//                }
+//
+//                fprintf(output, "%s\n\n", line);
+//                contains_valid_number = 1;
+//
+//                if (!result)
+//                {
+//                    result = strdup(line);
+//                }
+//                else
+//                {
+//                    char* temp_result = NULL;
+//
+//                    // Dokonywanie odpowiedniej operacji w zale no ci od znaku
+//                    switch (operation)
+//                    {
+//                    case '+':
+//                        temp_result = add_strings(result, line, base);
+//                        break;
+//                    case '*':
+//                        temp_result = multiply_strings(result, line, base);
+//                        break;
+//                    case '^':
+//                        temp_result = power_strings(result, line, base);
+//                        break;
+//                    case '/':
+//                        temp_result = integer_division_strings(result, line, base);
+//                        break;
+//                    case '%':
+//                        temp_result = modulo_strings(result, line, base);
+//                        break;
+//                    default:
+//                        error_flag = 1;
+//                        break;
+//                    }
+//
+//                    safe_free(result);
+//                    result = temp_result;
+//                }
+//            }
+//
+//            if (contains_valid_number && result && !error_flag)
+//            {
+//                fprintf(output, "%s\n\n", result);
+//                safe_free(result);
+//            }
+//            else
+//            {
+//                error_flag = 1;
+//            }
+//        }
+//        else
+//        {
+//            error_flag = 1;
+//        }
+//
+//
+//        if (error_flag)
+//        {
+//            fprintf(output, "ERROR\n\n");
+//            error_flag = 0;
+//        }
+//
+//    }
+//    if (error_flag)
+//    {
+//        fprintf(output, "ERROR\n\n");
+//        error_flag = 0;
+//    }
+//
+//}
 
-// Funkcja do porównywania dwóch ci¹gów znaków reprezentuj¹cych liczby
+
+// Funkcja do por wnywania dw ch ci g w znak w reprezentuj cych liczby
 int compare_strings(const char* num1, const char* num2, int base)
 {
     int len1 = strlen(num1);
@@ -300,7 +548,7 @@ int compare_strings(const char* num1, const char* num2, int base)
     return strcmp(num1, num2);
 }
 
-// Funkcja konwertuj¹ca ci¹g znaków z systemu o podanej podstawie na liczbê w systemie dziesiêtnym
+// Funkcja konwertuj ca ci g znak w z systemu o podanej podstawie na liczb  w systemie dziesi tnym
 char* base_to_decimal(const char* num, int base_from)
 {
     int len = strlen(num);
@@ -348,7 +596,7 @@ char* base_to_decimal(const char* num, int base_from)
     return result;
 }
 
-// Konwertuje liczbê z systemu dziesiêtnego na dowolny system liczbowy
+// Konwertuje liczb  z systemu dziesi tnego na dowolny system liczbowy
 char* decimal_to_base(const char* num, int base_to)
 {
     if (strcmp(num, "0") == 0) return strdup("0");
@@ -403,7 +651,7 @@ char* decimal_to_base(const char* num, int base_to)
 }
 
 
-// Funkcja do odejmowania dwóch du¿ych liczb zapisanych jako ci¹gi znaków
+// Funkcja do odejmowania dw ch du ych liczb zapisanych jako ci gi znak w
 char* subtract_strings(const char* num1, const char* num2, int base)
 {
     int len1 = strlen(num1);
@@ -442,7 +690,7 @@ char* subtract_strings(const char* num1, const char* num2, int base)
 
 
 
-// Funkcja do dodawania dwóch liczb w systemie o podanej podstawie
+// Funkcja do dodawania dw ch liczb w systemie o podanej podstawie
 char* add_strings(const char* num1, const char* num2, int base)
 {
     int len1 = strlen(num1);
@@ -470,7 +718,7 @@ char* add_strings(const char* num1, const char* num2, int base)
     return trimmed_result;
 }
 
-// Funkcja do mno¿enia dwóch du¿ych liczb zapisanych jako ci¹gi znaków
+// Funkcja do mno enia dw ch du ych liczb zapisanych jako ci gi znak w
 char* multiply_strings(const char* num1, const char* num2, int base)
 {
     int len1 = strlen(num1);
@@ -510,7 +758,7 @@ char* multiply_strings(const char* num1, const char* num2, int base)
     return strlen(result) == 0 ? strdup("0") : strdup(result);
 }
 
-// Funkcja do potêgowania du¿ych liczb zapisanych jako ci¹gi znaków
+// Funkcja do pot gowania du ych liczb zapisanych jako ci gi znak w
 char* power_strings(const char* num1, const char* num2, int base)
 {
     char* result = strdup("1");
@@ -535,7 +783,7 @@ char* power_strings(const char* num1, const char* num2, int base)
     return result;
 }
 
-// Funkcja do dzielenia ca³kowitoliczbowego dwóch du¿ych liczb zapisanych jako ci¹gi znaków
+// Funkcja do dzielenia ca kowitoliczbowego dw ch du ych liczb zapisanych jako ci gi znak w
 char* integer_division_strings(const char* num1, const char* num2, int base)
 {
     if (compare_strings(num2, "0", base) == 0) return strdup("DIV_BY_ZERO");
@@ -558,7 +806,7 @@ char* integer_division_strings(const char* num1, const char* num2, int base)
     return result;
 }
 
-// Funkcja do obliczania reszty z dzielenia dwóch du¿ych liczb zapisanych jako ci¹gi znaków
+// Funkcja do obliczania reszty z dzielenia dw ch du ych liczb zapisanych jako ci gi znak w
 char* modulo_strings(const char* num1, const char* num2, int base)
 {
     if (compare_strings(num2, "0", base) == 0) return strdup("DIV_BY_ZERO");
@@ -576,7 +824,7 @@ char* modulo_strings(const char* num1, const char* num2, int base)
 }
 
 
-//G³ówna funkcja obs³uguj¹ca otwieranie i zamykanie plików txt oraz uruchamiaj¹ca funkcjê parse_and_execute
+//G  wna funkcja obs uguj ca otwieranie i zamykanie plik w txt oraz uruchamiaj ca funkcj  parse_and_execute
 int main(int argc, char* argv[])
 {
     if (argc != 3)
